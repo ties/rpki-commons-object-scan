@@ -3,12 +3,16 @@
  */
 package net.ripe.objectscan
 
+import java.nio.file.Paths
+import kotlin.io.path.absolutePathString
 import kotlin.test.Test
 import kotlin.test.assertNotNull
 
 class AppTest {
-    @Test fun appHasAGreeting() {
-        val classUnderTest = App()
-        assertNotNull(classUnderTest.greeting, "app should have a greeting")
+    @Test fun appScansConformanceFiles() {
+        val conformanceDir = Paths.get("src", "test", "resources", "bbn-conformance")
+        // Scan the conformance directory
+        val classUnderTest = App(conformanceDir.absolutePathString())
+        classUnderTest.run()
     }
 }

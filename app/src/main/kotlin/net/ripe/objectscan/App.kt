@@ -5,14 +5,19 @@ package net.ripe.objectscan
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import net.ripe.rpki.commons.crypto.x509cert.X509ResourceCertificateParser
+import net.ripe.rpki.commons.validation.ValidationMessage
 import net.ripe.rpki.commons.validation.ValidationResult
 import java.io.File
 import java.io.IOException
+import java.lang.IllegalStateException
 import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.locks.Lock
+import java.util.concurrent.locks.ReentrantLock
 import java.util.function.Predicate
 import java.util.stream.Collectors
+import kotlin.concurrent.withLock
 import kotlin.io.path.extension
 import kotlin.io.path.isDirectory
 import kotlin.io.path.name
@@ -25,16 +30,26 @@ private val logger = KotlinLogging.logger {}
 class App(val base: String){
     val basePath = File(base).toPath()
 
+    val lock = ReentrantLock()
+
     fun parseFile(path: Path) {
         try {
             var validationResult = ValidationResult.withLocation(path.toUri());
             X509ResourceCertificateParser.parseCertificate(validationResult, Files.readAllBytes(path))
 
             if (validationResult.hasFailureForCurrentLocation()) {
-                logger.info("Parsed {}", basePath.relativize(path))
-                logger.info("failures for {}: {}", path, validationResult.failuresForAllLocations)
+                // Lock to prevent interleaving of lines
+                lock.withLock {
+                    logger.info("Parsed {}", basePath.relativize(path))
+
+                    validationResult.failuresForAllLocations.forEach {
+                        logger.info("  - {}", ValidationMessage.getMessage(it))
+
+                    }
+                }
             }
-        } catch (e: IOException) {
+        } catch (ex: Exception) {
+            logger.error("Exception parsing {}: {}", path, ex)
         }
     }
 
