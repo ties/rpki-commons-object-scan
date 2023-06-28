@@ -5,6 +5,7 @@ package net.ripe.objectscan
 
 import io.github.oshai.kotlinlogging.KotlinLogging
 import net.ripe.rpki.commons.crypto.x509cert.X509ResourceCertificateParser
+import net.ripe.rpki.commons.validation.ValidationCheck
 import net.ripe.rpki.commons.validation.ValidationMessage
 import net.ripe.rpki.commons.validation.ValidationResult
 import java.io.File
@@ -17,6 +18,7 @@ import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
 import java.util.function.Predicate
 import java.util.stream.Collectors
+import java.util.stream.Stream
 import kotlin.concurrent.withLock
 import kotlin.io.path.extension
 import kotlin.io.path.isDirectory
@@ -32,25 +34,28 @@ class App(val base: String){
 
     val lock = ReentrantLock()
 
-    fun parseFile(path: Path) {
+    fun parseFile(path: Path): Stream<Pair<String, ValidationCheck>> {
         try {
             var validationResult = ValidationResult.withLocation(path.toUri());
             X509ResourceCertificateParser.parseCertificate(validationResult, Files.readAllBytes(path))
 
-            if (validationResult.hasFailureForCurrentLocation()) {
-                // Lock to prevent interleaving of lines
-                lock.withLock {
-                    logger.info("Parsed {}", basePath.relativize(path))
-
-                    validationResult.failuresForAllLocations.forEach {
-                        logger.info("  - {}", ValidationMessage.getMessage(it))
-
-                    }
-                }
+            if (validationResult.hasFailures()) {
+                logger.info("validation failure at {}", path)
             }
+
+            return Stream.concat(
+                    validationResult.failuresForAllLocations.map { failure ->
+                        Pair(path.name, failure)
+                    }.stream(),
+                    validationResult.warnings.map { warning ->
+                        Pair(path.name, warning)
+                    }.stream()
+            )
         } catch (ex: Exception) {
             logger.error("Exception parsing {}: {}", path, ex)
         }
+
+        return Stream.empty()
     }
 
     fun run() {
@@ -63,8 +68,17 @@ class App(val base: String){
 
         logger.info("Gathered {} files.", paths.size)
 
-        paths.parallelStream()
-                .forEach { parseFile(it) }
+        val failures = paths.parallelStream()
+                .flatMap(this::parseFile)
+                .collect(Collectors.toList())
+        logger.info("Finished processing.")
+
+        failures.groupBy { failedObject -> failedObject.second.key }.forEach() { (failedCheckType, failedChecksAndNames) ->
+            logger.info("level: {} check: {}", failedChecksAndNames.get(0).second.status, failedCheckType)
+            failedChecksAndNames.forEach { elem ->
+                logger.info("  * {}", elem.first)
+            }
+        }
     }
 }
 
