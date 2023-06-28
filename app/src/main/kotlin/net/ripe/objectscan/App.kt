@@ -12,19 +12,19 @@ import net.ripe.rpki.commons.crypto.x509cert.X509ResourceCertificateParser
 import net.ripe.rpki.commons.util.RepositoryObjectType
 import net.ripe.rpki.commons.validation.ValidationCheck
 import net.ripe.rpki.commons.validation.ValidationResult
-import org.bouncycastle.jce.provider.X509CRLParser
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.function.Predicate
 import java.util.stream.Collectors
 import java.util.stream.Stream
-import kotlin.io.path.extension
 import kotlin.io.path.isDirectory
 import kotlin.streams.asStream
 import kotlin.system.exitProcess
 
 private val logger = KotlinLogging.logger {}
+
+const val N = 10
 
 
 class App(val base: String){
@@ -54,7 +54,7 @@ class App(val base: String){
                 RepositoryObjectType.Roa -> {
                     RoaCmsParser().parse(validationResult, bytes)
                 }
-                RepositoryObjectType.Unknown -> {
+                else -> { // unknown or unmatched
                     logger.info("Skipping {}", path)
                 }
             }
@@ -91,9 +91,11 @@ class App(val base: String){
         failures.groupBy { failedObject -> Pair(failedObject.second.status, failedObject.second.key) }.forEach() { (group, failedChecksAndNames) ->
             val (status, key) = group
             logger.info("level: {} check: {} {} failures", status, key, failedChecksAndNames.size)
-            failedChecksAndNames.forEach { elem ->
+            logger.info("============================ Sample (N={}) ============================", N)
+            failedChecksAndNames.shuffled().subList(0, minOf(failedChecksAndNames.size, N)).sortedBy { pair -> pair.first } .forEach { elem ->
                 logger.info("  * {}", elem.first)
             }
+            logger.info("================================================================")
         }
     }
 }
