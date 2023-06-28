@@ -11,6 +11,7 @@ import net.ripe.rpki.commons.crypto.cms.roa.RoaCmsParser
 import net.ripe.rpki.commons.crypto.x509cert.X509ResourceCertificateParser
 import net.ripe.rpki.commons.util.RepositoryObjectType
 import net.ripe.rpki.commons.validation.ValidationCheck
+import net.ripe.rpki.commons.validation.ValidationMessage
 import net.ripe.rpki.commons.validation.ValidationResult
 import java.io.File
 import java.nio.file.Files
@@ -90,7 +91,7 @@ class App(val base: String){
 
         failures.groupBy { failedObject -> Pair(failedObject.second.status, failedObject.second.key) }.forEach() { (group, failedChecksAndNames) ->
             val (status, key) = group
-            logger.info("level: {} check: {} {} failures", status, key, failedChecksAndNames.size)
+            logger.info("{}:{} check: {} {} failures", key, status, ValidationMessage.getMessage(failedChecksAndNames.get(0).second), failedChecksAndNames.size)
             logger.info("============================ Sample (N={}) ============================", N)
             failedChecksAndNames.shuffled().subList(0, minOf(failedChecksAndNames.size, N)).sortedBy { pair -> pair.first } .forEach { elem ->
                 logger.info("  * {}", elem.first)

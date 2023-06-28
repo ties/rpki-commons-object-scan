@@ -26,7 +26,7 @@ repositories {
 dependencies {
     // This dependency is used by the application.
     implementation("com.google.guava:guava:31.1-jre")
-    implementation("net.ripe.rpki:rpki-commons:1.35-SNAPSHOT")
+    implementation("net.ripe.rpki:rpki-commons:1.34")
 
     implementation("io.github.oshai:kotlin-logging-jvm:4.0.0-beta-29")
     implementation("ch.qos.logback:logback-classic:1.4.7")
