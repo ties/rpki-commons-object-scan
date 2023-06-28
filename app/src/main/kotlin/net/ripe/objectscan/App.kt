@@ -6,23 +6,15 @@ package net.ripe.objectscan
 import io.github.oshai.kotlinlogging.KotlinLogging
 import net.ripe.rpki.commons.crypto.x509cert.X509ResourceCertificateParser
 import net.ripe.rpki.commons.validation.ValidationCheck
-import net.ripe.rpki.commons.validation.ValidationMessage
 import net.ripe.rpki.commons.validation.ValidationResult
 import java.io.File
-import java.io.IOException
-import java.lang.IllegalStateException
-import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.concurrent.locks.Lock
-import java.util.concurrent.locks.ReentrantLock
 import java.util.function.Predicate
 import java.util.stream.Collectors
 import java.util.stream.Stream
-import kotlin.concurrent.withLock
 import kotlin.io.path.extension
 import kotlin.io.path.isDirectory
-import kotlin.io.path.name
 import kotlin.streams.asStream
 import kotlin.system.exitProcess
 
@@ -32,8 +24,6 @@ private val logger = KotlinLogging.logger {}
 class App(val base: String){
     val basePath = File(base).toPath()
 
-    val lock = ReentrantLock()
-
     fun parseFile(path: Path): Stream<Pair<String, ValidationCheck>> {
         try {
             var validationResult = ValidationResult.withLocation(path.toUri());
@@ -41,10 +31,10 @@ class App(val base: String){
 
             return Stream.concat(
                     validationResult.failuresForAllLocations.map { failure ->
-                        Pair(path.name, failure)
+                        Pair(basePath.relativize(path).toString(), failure)
                     }.stream(),
                     validationResult.warnings.map { warning ->
-                        Pair(path.name, warning)
+                        Pair(basePath.relativize(path).toString(), warning)
                     }.stream()
             )
         } catch (ex: Exception) {
@@ -59,7 +49,6 @@ class App(val base: String){
                 .asStream()
                 .map(File::toPath)
                 .filter(Predicate.not(Path::isDirectory))
-                .filter { it.extension.equals("cer") }
                 .collect(Collectors.toList())
 
         logger.info("Gathered {} files.", paths.size)
@@ -69,8 +58,9 @@ class App(val base: String){
                 .collect(Collectors.toList())
         logger.info("Finished processing.")
 
-        failures.groupBy { failedObject -> failedObject.second.key }.forEach() { (failedCheckType, failedChecksAndNames) ->
-            logger.info("level: {} check: {}", failedChecksAndNames.get(0).second.status, failedCheckType)
+        failures.groupBy { failedObject -> Pair(failedObject.second.status, failedObject.second.key) }.forEach() { (group, failedChecksAndNames) ->
+            val (status, key) = group
+            logger.info("level: {} check: {} {} failures", status, key, failedChecksAndNames.size)
             failedChecksAndNames.forEach { elem ->
                 logger.info("  * {}", elem.first)
             }
