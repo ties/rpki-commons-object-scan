@@ -39,10 +39,6 @@ class App(val base: String){
             var validationResult = ValidationResult.withLocation(path.toUri());
             X509ResourceCertificateParser.parseCertificate(validationResult, Files.readAllBytes(path))
 
-            if (validationResult.hasFailures()) {
-                logger.info("validation failure at {}", path)
-            }
-
             return Stream.concat(
                     validationResult.failuresForAllLocations.map { failure ->
                         Pair(path.name, failure)
