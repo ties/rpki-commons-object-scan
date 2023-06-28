@@ -4,9 +4,15 @@
 package net.ripe.objectscan
 
 import io.github.oshai.kotlinlogging.KotlinLogging
+import net.ripe.rpki.commons.crypto.cms.aspa.AspaCmsParser
+import net.ripe.rpki.commons.crypto.cms.ghostbuster.GhostbustersCmsParser
+import net.ripe.rpki.commons.crypto.cms.manifest.ManifestCmsParser
+import net.ripe.rpki.commons.crypto.cms.roa.RoaCmsParser
 import net.ripe.rpki.commons.crypto.x509cert.X509ResourceCertificateParser
+import net.ripe.rpki.commons.util.RepositoryObjectType
 import net.ripe.rpki.commons.validation.ValidationCheck
 import net.ripe.rpki.commons.validation.ValidationResult
+import org.bouncycastle.jce.provider.X509CRLParser
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -27,15 +33,39 @@ class App(val base: String){
     fun parseFile(path: Path): Stream<Pair<String, ValidationCheck>> {
         try {
             var validationResult = ValidationResult.withLocation(path.toUri());
-            X509ResourceCertificateParser.parseCertificate(validationResult, Files.readAllBytes(path))
+            val bytes = Files.readAllBytes(path)
+
+            when (RepositoryObjectType.parse(path.fileName.toString())) {
+                RepositoryObjectType.Manifest -> {
+                    ManifestCmsParser().parse(validationResult, bytes)
+                }
+                RepositoryObjectType.Aspa -> {
+                    AspaCmsParser().parse(validationResult, bytes)
+                }
+                RepositoryObjectType.Certificate -> {
+                       X509ResourceCertificateParser().parse(validationResult, bytes)
+                }
+                RepositoryObjectType.Crl -> {
+                    // ignored
+                }
+                RepositoryObjectType.Gbr -> {
+                    GhostbustersCmsParser().parse(validationResult, bytes)
+                }
+                RepositoryObjectType.Roa -> {
+                    RoaCmsParser().parse(validationResult, bytes)
+                }
+                RepositoryObjectType.Unknown -> {
+                    logger.info("Skipping {}", path)
+                }
+            }
 
             return Stream.concat(
-                    validationResult.failuresForAllLocations.map { failure ->
-                        Pair(basePath.relativize(path).toString(), failure)
-                    }.stream(),
-                    validationResult.warnings.map { warning ->
-                        Pair(basePath.relativize(path).toString(), warning)
-                    }.stream()
+                validationResult.failuresForAllLocations.map { failure ->
+                    Pair(basePath.relativize(path).toString(), failure)
+                }.stream(),
+                validationResult.warnings.map { warning ->
+                    Pair(basePath.relativize(path).toString(), warning)
+                }.stream()
             )
         } catch (ex: Exception) {
             logger.error("Exception parsing {}: {}", path, ex)
