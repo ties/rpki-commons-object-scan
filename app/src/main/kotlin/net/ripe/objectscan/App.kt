@@ -8,6 +8,7 @@ import net.ripe.rpki.commons.crypto.cms.aspa.AspaCmsParser
 import net.ripe.rpki.commons.crypto.cms.ghostbuster.GhostbustersCmsParser
 import net.ripe.rpki.commons.crypto.cms.manifest.ManifestCmsParser
 import net.ripe.rpki.commons.crypto.cms.roa.RoaCmsParser
+import net.ripe.rpki.commons.crypto.x509cert.X509CertificateParser
 import net.ripe.rpki.commons.crypto.x509cert.X509ResourceCertificateParser
 import net.ripe.rpki.commons.util.RepositoryObjectType
 import net.ripe.rpki.commons.validation.ValidationCheck
@@ -44,7 +45,7 @@ class App(val base: String){
                     AspaCmsParser().parse(validationResult, bytes)
                 }
                 RepositoryObjectType.Certificate -> {
-                       X509ResourceCertificateParser().parse(validationResult, bytes)
+                    X509CertificateParser.parseCertificate(validationResult, bytes)
                 }
                 RepositoryObjectType.Crl -> {
                     // ignored

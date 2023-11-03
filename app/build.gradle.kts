@@ -9,7 +9,7 @@
 
 plugins {
     // Apply the org.jetbrains.kotlin.jvm Plugin to add support for Kotlin.
-    id("org.jetbrains.kotlin.jvm") version "1.8.10"
+    id("org.jetbrains.kotlin.jvm") version "1.9.0"
 
     // Apply the application plugin to add support for building a CLI application in Java.
     application
@@ -26,7 +26,7 @@ repositories {
 dependencies {
     // This dependency is used by the application.
     implementation("com.google.guava:guava:31.1-jre")
-    implementation("net.ripe.rpki:rpki-commons:1.34")
+    implementation("net.ripe.rpki:rpki-commons:1.36")
 
     implementation("io.github.oshai:kotlin-logging-jvm:4.0.0-beta-29")
     implementation("ch.qos.logback:logback-classic:1.4.7")
